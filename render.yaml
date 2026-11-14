@@ -1,0 +1,32 @@
+services:
+  - type: web
+    name: sigil
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt && cd frontend && npm install && npm run build
+    startCommand: gunicorn app:app --bind 0.0.0.0:$PORT --workers 1 --threads 4 --timeout 120
+    envVars:
+      - key: POLLAR_PUBLISHABLE_KEY
+        sync: false
+      - key: DATABASE_URL
+        sync: false
+      - key: FLASK_SECRET_KEY
+        sync: false
+      - key: TREASURY_PUBLIC
+        sync: false
+      - key: TREASURY_SECRET
+        sync: false
+      - key: USDC_ISSUER
+        value: GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5
+      - key: USDC_CONTRACT
+        value: CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA
+      - key: POLLAR_NETWORK
+        value: testnet
+      - key: POLLAR_HORIZON_URL
+        value: https://horizon-testnet.stellar.org
+      - key: DEMO_XLM_PER_USD
+        value: "10"
+      - key: COOKIE_SECURE
+        value: "true"
+      - key: MCP_PAT
+        sync: false
