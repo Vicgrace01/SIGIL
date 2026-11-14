@@ -1,6 +1,6 @@
 """Seed Sigil demo. Run once: python seed.py
    Local: PUBLIC_BASE_URL=http://localhost:5000
-   Prod:  PUBLIC_BASE_URL=https://sigil.onrender.com
+   Prod:  PUBLIC_BASE_URL=https://sigil-yu2u.onrender.com
 """
 import os, sys, sqlite3, datetime
 import requests
@@ -13,7 +13,6 @@ DB_PATH      = os.getenv("DATABASE_PATH", "sigil.db")
 PASSWORD     = "demo1234"
 
 def register_or_login(name, email):
-    """Use a real requests.Session so cookies persist across calls."""
     s = requests.Session()
     r = s.post(f"{BASE}/api/register",
                json={"name": name, "email": email, "password": PASSWORD}, timeout=15)
@@ -27,18 +26,23 @@ def register_or_login(name, email):
 
 def get_db_conn():
     if DATABASE_URL:
-        import psycopg2
-        return psycopg2.connect(DATABASE_URL), "pg"
+        try:
+            import psycopg
+            return psycopg.connect(DATABASE_URL), "psycopg3"
+        except ImportError:
+            import psycopg2
+            return psycopg2.connect(DATABASE_URL), "psycopg2"
     return sqlite3.connect(DB_PATH, timeout=20), "sqlite"
 
 def seed_paid(estate_id, email, amount, month):
     conn, kind = get_db_conn()
     try:
         cur = conn.cursor()
-        if kind == "pg":
+        if kind in ("psycopg3", "psycopg2"):
             cur.execute("SELECT id FROM users WHERE email=%s", (email,))
             u = cur.fetchone()
-            if not u: return False
+            if not u:
+                return False
             uid = u[0]
             cur.execute("SELECT id FROM contributions WHERE estate_id=%s AND user_id=%s AND month=%s",
                         (estate_id, uid, month))
@@ -51,7 +55,8 @@ def seed_paid(estate_id, email, amount, month):
         else:
             cur.execute("SELECT id FROM users WHERE email=?", (email,))
             u = cur.fetchone()
-            if not u: return False
+            if not u:
+                return False
             uid = u[0]
             cur.execute("SELECT id FROM contributions WHERE estate_id=? AND user_id=? AND month=?",
                         (estate_id, uid, month))
@@ -70,7 +75,6 @@ def main():
     print(f"\n  SIGIL SEED  →  {BASE}\n")
     month = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m")
 
-    # 1. Officer Ada
     ada, _ = register_or_login("Officer Ada", "ada@sigil.demo")
     r = ada.get(f"{BASE}/api/estates", timeout=15)
     if r.status_code != 200:
@@ -94,7 +98,6 @@ def main():
         eid = d["estate_id"]; invite = d["invite_code"]
         print(f"  ✓ estate #{eid} created · invite {invite}")
 
-    # 2. Residents
     people = [
         ("Officer Bola",  "bola@sigil.demo",  True),
         ("Chidi Okafor",  "chidi@sigil.demo", False),
@@ -110,7 +113,6 @@ def main():
         else:
             print(f"  ⚠ {name} join failed: {jr.status_code} {jr.text[:120]}")
 
-    # 3. Fetch members, promote Bola, approve all KYC
     detail = ada.get(f"{BASE}/api/estates/{eid}", timeout=15).json()
     for m in detail.get("members", []):
         if m["name"] == "Officer Bola" and m["role"] != "officer":
@@ -121,7 +123,6 @@ def main():
             ada.post(f"{BASE}/api/estates/{eid}/kyc-approve", json={"member_id": m["id"]}, timeout=15)
     print(f"  ✓ all KYC approved")
 
-    # 4. Vendor
     detail = ada.get(f"{BASE}/api/estates/{eid}", timeout=15).json()
     if not detail.get("vendors"):
         vr = ada.post(f"{BASE}/api/estates/{eid}/vendors", json={
@@ -132,12 +133,10 @@ def main():
             print(f"  ✓ vendor added")
         detail = ada.get(f"{BASE}/api/estates/{eid}", timeout=15).json()
 
-    # 5. Mark 4 residents paid
     for email in ("ada@sigil.demo", "bola@sigil.demo", "chidi@sigil.demo", "ngozi@sigil.demo"):
         if seed_paid(eid, email, 500, month):
             print(f"  ✓ {email.split('@')[0]} marked paid")
 
-    # 6. Pre-create proposal with Ada's signature (1/2)
     if detail.get("vendors") and not any(p["purpose"] == "Diesel — demo" for p in detail.get("proposals", [])):
         r = ada.post(f"{BASE}/api/estates/{eid}/proposals", json={
             "vendor_id": detail["vendors"][0]["id"],
@@ -156,7 +155,6 @@ def main():
     print(f"    ada@sigil.demo    officer · created proposal")
     print(f"    bola@sigil.demo   officer · will complete 2/2")
     print(f"    tunde@sigil.demo  resident · WILL PAY LIVE")
-    print(f"    chidi@ / ngozi@ / femi@ — extra residents")
     print(f"\n  Live demo (2 browsers):")
     print(f"    1. Browser 1: login ada → see 4/6 paid")
     print(f"    2. Browser 2 (incognito): login tunde → connect Pollar → Pay $5 → 5/6")

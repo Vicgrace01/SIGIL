@@ -1,0 +1,214 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>SIGIL · Logo Generator</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, system-ui, 'Segoe UI', sans-serif;
+    background: #0B0B14;
+    color: #EDEDF5;
+    min-height: 100vh;
+    padding: 48px 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 28px;
+  }
+  h1 {
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: 1.3rem;
+    letter-spacing: 0.15em;
+    color: #32BDFF;
+    font-weight: 900;
+  }
+  .sub {
+    font-size: 0.85rem;
+    color: #8A8AA3;
+    max-width: 560px;
+    text-align: center;
+    line-height: 1.6;
+  }
+  .controls {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    justify-content: center;
+    max-width: 700px;
+  }
+  button {
+    background: #32BDFF;
+    color: #0B0B14;
+    border: 0;
+    padding: 13px 24px;
+    border-radius: 4px;
+    font-family: inherit;
+    font-weight: 700;
+    font-size: 0.88rem;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  button:hover {
+    background: #5ACBFF;
+    transform: translateY(-2px);
+    box-shadow: 0 10px 28px rgba(50, 189, 255, 0.35);
+  }
+  button:active { transform: translateY(0); }
+  .preview {
+    background: #11111C;
+    padding: 20px;
+    border-radius: 8px;
+    border: 1px solid rgba(50, 189, 255, 0.2);
+    max-width: 100%;
+  }
+  canvas {
+    display: block;
+    max-width: 100%;
+    height: auto;
+    border-radius: 4px;
+  }
+</style>
+</head>
+<body>
+
+<h1>SIGIL</h1>
+<p class="sub">Click a size to download the PNG. No external dependencies. Works offline.</p>
+
+<div class="controls">
+  <button onclick="download(1200, 630, 'sigil-cover-1200x630.png')">1200 × 630 · Cover</button>
+  <button onclick="download(1600, 900, 'sigil-thumb-1600x900.png')">1600 × 900 · YouTube</button>
+  <button onclick="download(1200, 1200, 'sigil-square-1200.png')">1200 × 1200 · Square</button>
+  <button onclick="download(1080, 1920, 'sigil-story-1080x1920.png')">1080 × 1920 · Story</button>
+</div>
+
+<div class="preview">
+  <canvas id="preview" width="1200" height="630"></canvas>
+</div>
+
+<script>
+const P = {
+  outer: "M60 4L108.5 32V88L60 116L11.5 88V32L60 4Z",
+  inner: "M60 13L100.7 36.5V83.5L60 107L19.3 83.5V36.5L60 13Z",
+  s:     "M77 35H47L37 45V57L47 64H71L74 67V75L71 78H41V87H73L83 77V64L73 57H49L46 54V47L49 44H77V35Z"
+};
+
+function drawSeal(ctx, cx, cy, size) {
+  const sc = size / 120;
+  ctx.save();
+  ctx.translate(cx - size / 2, cy - size / 2);
+  ctx.scale(sc, sc);
+  ctx.shadowColor = 'rgba(50, 189, 255, 0.55)';
+  ctx.shadowBlur = 50;
+  ctx.fillStyle = '#171724';
+  ctx.fill(new Path2D(P.outer));
+  ctx.shadowBlur = 0;
+  ctx.fillStyle = '#0B0B14';
+  ctx.fill(new Path2D(P.inner));
+  ctx.strokeStyle = '#32BDFF';
+  ctx.lineWidth = 1.4;
+  ctx.stroke(new Path2D(P.inner));
+  ctx.fillStyle = '#B6FF3C';
+  ctx.fill(new Path2D(P.s));
+  ctx.restore();
+}
+
+function render(ctx, w, h) {
+  ctx.fillStyle = '#0B0B14';
+  ctx.fillRect(0, 0, w, h);
+
+  // Grid
+  const g = Math.min(w, h) / 18;
+  ctx.strokeStyle = 'rgba(50, 189, 255, 0.045)';
+  ctx.lineWidth = 1;
+  for (let x = 0; x < w; x += g) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke(); }
+  for (let y = 0; y < h; y += g) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke(); }
+
+  // Radial glow
+  const sealSize = Math.min(w * 0.34, h * 0.30);
+  const sealX = w / 2;
+  const sealY = h * 0.36;
+  const glow = ctx.createRadialGradient(sealX, sealY, 0, sealX, sealY, sealSize * 1.6);
+  glow.addColorStop(0, 'rgba(50, 189, 255, 0.18)');
+  glow.addColorStop(1, 'rgba(50, 189, 255, 0)');
+  ctx.fillStyle = glow;
+  ctx.fillRect(0, 0, w, h);
+
+  // Seal
+  drawSeal(ctx, sealX, sealY, sealSize);
+
+  // Wordmark
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  const fs = Math.min(w * 0.095, h * 0.11);
+  ctx.font = `900 ${fs}px Georgia, 'Times New Roman', serif`;
+  const word = 'SIGIL';
+  const sp = fs * 0.18;
+  let tw = 0;
+  for (const ch of word) tw += ctx.measureText(ch).width + sp;
+  tw -= sp;
+  let x = sealX - tw / 2;
+  ctx.fillStyle = '#EDEDF5';
+  for (const ch of word) {
+    const cw = ctx.measureText(ch).width;
+    ctx.fillText(ch, x + cw / 2, h * 0.68);
+    x += cw + sp;
+  }
+
+  // Tagline
+  ctx.fillStyle = '#32BDFF';
+  ctx.font = `italic 400 ${Math.min(w * 0.033, h * 0.045)}px Georgia, 'Times New Roman', serif`;
+  ctx.fillText('Every naira, sealed on-chain.', sealX, h * 0.79);
+
+  // Sub-tagline
+  ctx.fillStyle = '#5A5A72';
+  ctx.font = `500 ${Math.min(w * 0.013, h * 0.02)}px 'Courier New', monospace`;
+  ctx.fillText('BLOCKCHAINUNN 5.0  ·  STELLAR TESTNET', sealX, h * 0.88);
+
+  // Bottom accent
+  ctx.fillStyle = 'rgba(50, 189, 255, 0.55)';
+  const lw = Math.min(w, h) * 0.16;
+  ctx.fillRect(sealX - lw / 2, h * 0.945, lw, 2);
+
+  // Corner marks
+  const m = Math.min(w, h) * 0.045;
+  const arm = Math.min(w, h) * 0.035;
+  ctx.strokeStyle = 'rgba(50, 189, 255, 0.5)';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  // Top-left
+  ctx.moveTo(m, m + arm); ctx.lineTo(m, m); ctx.lineTo(m + arm, m);
+  // Top-right
+  ctx.moveTo(w - m - arm, m); ctx.lineTo(w - m, m); ctx.lineTo(w - m, m + arm);
+  // Bottom-left
+  ctx.moveTo(m, h - m - arm); ctx.lineTo(m, h - m); ctx.lineTo(m + arm, h - m);
+  // Bottom-right
+  ctx.moveTo(w - m - arm, h - m); ctx.lineTo(w - m, h - m); ctx.lineTo(w - m, h - m - arm);
+  ctx.stroke();
+}
+
+function download(w, h, filename) {
+  const c = document.createElement('canvas');
+  c.width = w;
+  c.height = h;
+  render(c.getContext('2d'), w, h);
+  c.toBlob(blob => {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
+  }, 'image/png');
+}
+
+window.addEventListener('load', () => {
+  const prev = document.getElementById('preview');
+  render(prev.getContext('2d'), prev.width, prev.height);
+});
+</script>
+
+</body>
+</html>
