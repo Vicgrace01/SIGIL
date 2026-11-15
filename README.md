@@ -49,6 +49,26 @@ Sigil replaces the caretaker-controlled cash box with an on-chain treasury that 
 - Demo script: ./docs/DEMO_SCRIPT.md
 - Judges guide: ./docs/JUDGES.md
 
+## Live proof (testnet)
+
+Everything below is verifiable on Stellar testnet. Nothing is mocked.
+
+**Treasury account:** [`GAEK7257M66KAXBAYVPCZ2VB6VJDAMHCCIXXA2AOP4PGYQPUHXTNKZMY`](https://stellar.expert/explorer/testnet/account/GAEK7257M66KAXBAYVPCZ2VB6VJDAMHCCIXXA2AOP4PGYQPUHXTNKZMY)
+
+- **Demo Resident contribution** — $5.00 converted to 50 XLM at the demo rate, sent to treasury with memo `SIG-1-2026-11-7`. Verified by backend against Horizon before the contribution flipped to paid.
+- **Vendor disbursement** — $10.00 to Total Diesel Ltd, sent from treasury with memo `PROP-1` after both officers signed. Verifiable in the treasury's transaction history.
+- **Proposal lifecycle** — status flowed `pending (1/2)` → `ready (2/2)` → `executed` with tx hash recorded in the ledger.
+
+**How to verify in 60 seconds:**
+
+1. Open the treasury on Stellar Expert — see the payments in, the trustline, the account history
+2. Open https://sigil-yu2u.onrender.com/health — expect `{"ok":true,"db":"postgres","treasury_configured":true}`
+3. Sign in as `ada@sigil.demo` / `demo1234` — see the estate with 4/6 paid and proposal 1/2 pending
+4. Sign in as `bola@sigil.demo` / `demo1234` — sign the proposal, status flips to 2/2 ready
+5. Sign in as `ada` again — click Execute, watch the toast show the tx hash
+
+**Demo video:** [YouTube URL — replace when uploaded]
+
 ## License
 
 MIT — BlockchainUNN Conference 5.0
